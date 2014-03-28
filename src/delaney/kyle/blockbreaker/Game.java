@@ -1,18 +1,13 @@
 package delaney.kyle.blockbreaker;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Picture;
-import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.Environment;
 import com.larvalabs.svgandroid.SVGParser;
 
 class Game {
@@ -22,12 +17,9 @@ class Game {
 	private TiltInput mTilt;
 	private SoundManager mSoundManager;
 
-	private Picture mBlockDecor;
-	private Picture mSolidBlock;
-	private Picture[] mToughBlock;
 	private Picture mBallIcon;
 	
-	private float mBrickScale;
+	private float mBlockScale;
 	
 	private long mLastTime;
 
@@ -36,7 +28,9 @@ class Game {
 	
 	private float[] mOffset = new float[2];
 	
-	private static final int[] IDEAL_SIZE = {15*32,(12+6)*16};
+	private static final int[] BLOCKSIZE = {32, 16};
+	private static final int[] SCREENSIZE = {15*BLOCKSIZE[0],(12+6)*BLOCKSIZE[1]};
+
 	
 	private static final long SECOND = 1000000000;
 	
@@ -46,14 +40,17 @@ class Game {
 	private boolean mBallInPlay;
 	private boolean mPaused;
 	
-	private int[][] mBricks;
+	private int[][] mBlocks;
 
 	private Paint mBlockPaint;
 	
 	private static final int HARD_BLOCK = 0x0E;
 	private static final int UNBREAKABLE_BLOCK = 0x0D;
 	
-	private static final float BOTTOM = IDEAL_SIZE[1]-16;
+	private static final float PADDLE_Y = SCREENSIZE[1]-16;
+	
+	private static final int BLACK = 0xFF000000;
+	private static final int WHITE = 0xFFFFFFFF;
 	
 	private static final int[] mBlockColors = {
 			0, 
@@ -70,12 +67,15 @@ class Game {
 			0xFFe3a276,
 			0xFF880000,
 			0xFFCCCC00,
+			0xFFcccccc,
+			0xFFcccccc,
+			0xFFcccccc,
 			0xFFcccccc
 	};
 
-	private int mLives;
+	private int mBalls;
 	private int mStage;
-	private int mBricksLeft;
+	private int mBlocksLeft;
 	
 	private PatternFile mPatterns;
 	private long mFreeTime;
@@ -89,16 +89,7 @@ class Game {
         
         mPaddle = new Sprite(res, R.raw.paddle);
         mBall = new Sprite(res, R.raw.ball);
-		mBlockDecor = SVGParser.getSVGFromResource(res, R.raw.blockdecor).getPicture();
-		mSolidBlock = SVGParser.getSVGFromResource(res, R.raw.solidblock).getPicture();
 		mBallIcon = SVGParser.getSVGFromResource(res, R.raw.ball).getPicture();
-		
-		
-		mToughBlock = new Picture[4];
-		mToughBlock[0] = SVGParser.getSVGFromResource(res, R.raw.toughblock).getPicture();
-		mToughBlock[1] = SVGParser.getSVGFromResource(res, R.raw.splitblock).getPicture();
-		mToughBlock[2] = SVGParser.getSVGFromResource(res, R.raw.splitblock2).getPicture();
-		mToughBlock[3] = SVGParser.getSVGFromResource(res, R.raw.splitblock3).getPicture();
 		
 		mBlockPaint = new Paint();
 
@@ -111,12 +102,12 @@ class Game {
         mBallDx = 0;
         mBallDy = -100;
         
-        mBricks = new int[15][15];
+        mBlocks = new int[15][15];
         
-        mBrickScale = 0;
+        mBlockScale = 0;
         
         mBallInPlay = false;
-        mLives = 3;
+        mBalls = 3;
         
         mSoundManager = new SoundManager(context, 1, 2);
         mSoundManager.load(R.raw.bounce1, 1);
@@ -124,10 +115,10 @@ class Game {
 	}
 
 	public void sizeChanged(int width, int height) {
-		mBrickScale = Math.min((float)width/(float)(IDEAL_SIZE[0]), (float)height/(float)(IDEAL_SIZE[1]));
+		mBlockScale = Math.min((float)width/(float)(SCREENSIZE[0]), (float)height/(float)(SCREENSIZE[1]));
 		
-		mOffset[0] = (width - IDEAL_SIZE[0]*mBrickScale)/2;
-		mOffset[1] = (height - IDEAL_SIZE[1]*mBrickScale)/2;
+		mOffset[0] = (width - SCREENSIZE[0]*mBlockScale)/2;
+		mOffset[1] = (height - SCREENSIZE[1]*mBlockScale)/2;
 	}
 	
 	public void doDraw(Canvas canvas) {
@@ -137,30 +128,75 @@ class Game {
 		
 		canvas.save();
 		canvas.translate(mOffset[0], mOffset[1]);
-		canvas.scale(mBrickScale, mBrickScale);
-		canvas.clipRect(0, 0, IDEAL_SIZE[0], IDEAL_SIZE[1]);
-		mBlockPaint.setColor(0xFF000000);
-		canvas.drawRect(-1, -1, IDEAL_SIZE[0]+1, IDEAL_SIZE[1]+1, mBlockPaint);
-		mBlockPaint.setColor(0xFFFFFFFF);
-		canvas.drawRect(0, 0, IDEAL_SIZE[0], IDEAL_SIZE[1], mBlockPaint);
+		canvas.scale(mBlockScale, mBlockScale);
+		canvas.clipRect(0, 0, SCREENSIZE[0], SCREENSIZE[1]);
+		mBlockPaint.setColor(BLACK);
+		canvas.drawRect(-1, -1, SCREENSIZE[0]+1, SCREENSIZE[1]+1, mBlockPaint);
+		mBlockPaint.setColor(WHITE);
+		canvas.drawRect(0, 0, SCREENSIZE[0], SCREENSIZE[1], mBlockPaint);
 		
+		mBlockPaint.setColor(0xFFCCCCCC);
 		canvas.save();
-		for(int y = 0; y < 15; y++) {
+		for(int y = 0; y < mBlocks.length; y++) {
 			canvas.save();
-			for(int x = 0; x < 15; x++) {
-				if(mBricks[y][x] > 0) {
-					if(mBricks[y][x] >= HARD_BLOCK) {
-						canvas.drawPicture(mToughBlock[mBricks[y][x]-HARD_BLOCK]);
-					} else {
-						mBlockPaint.setColor(mBlockColors[mBricks[y][x]]);
-						canvas.drawRect(0, 0, 32, 16, mBlockPaint);
-						canvas.drawPicture(mBlockDecor);
-					}
+			for(int x = 0; x < mBlocks[0].length; x++) {
+				if(mBlocks[y][x] > 0) {
+					canvas.drawRect(2, 2, BLOCKSIZE[0] + 2, BLOCKSIZE[1] + 2, mBlockPaint);
 				}
-				canvas.translate(32, 0);
+				canvas.translate(BLOCKSIZE[0], 0);
 			}
 			canvas.restore();
-			canvas.translate(0, 16);
+			canvas.translate(0, BLOCKSIZE[1]);
+		}
+		canvas.restore();
+		
+
+		
+		canvas.save();
+		for(int y = 0; y < mBlocks.length; y++) {
+			canvas.save();
+			for(int x = 0; x < mBlocks[0].length; x++) {
+				if(mBlocks[y][x] > 0) {
+					mBlockPaint.setColor(mBlockColors[mBlocks[y][x]]);
+					canvas.drawRect(0, 0, BLOCKSIZE[0], BLOCKSIZE[1], mBlockPaint);
+					int cuts = Math.max(mBlocks[y][x]-HARD_BLOCK, 0);
+					mBlockPaint.setColor(BLACK);
+					switch(cuts) {
+						case 3:
+							canvas.drawLine(BLOCKSIZE[0]/4, 0, BLOCKSIZE[0]/4, BLOCKSIZE[1], mBlockPaint);
+							canvas.drawLine(BLOCKSIZE[0]*3/4, 0, BLOCKSIZE[0]*3/4, BLOCKSIZE[1], mBlockPaint);
+						case 2:
+							canvas.drawLine(0, BLOCKSIZE[1]/2, BLOCKSIZE[0], BLOCKSIZE[1]/2, mBlockPaint);
+						case 1:
+							canvas.drawLine(BLOCKSIZE[0]/2, 0, BLOCKSIZE[0]/2, BLOCKSIZE[1], mBlockPaint);
+						default:
+							break;
+					} 
+				}
+				canvas.translate(BLOCKSIZE[0], 0);
+			}
+			canvas.restore();
+			canvas.translate(0, BLOCKSIZE[1]);
+		}
+		canvas.restore();
+
+		
+		mBlockPaint.setColor(BLACK);
+		canvas.save();
+		for(int y = 0; y < mBlocks.length; y++) {
+			canvas.save();
+			for(int x = 0; x < mBlocks[0].length; x++) {
+				if(mBlocks[y][x] > 0) {
+					canvas.drawLines(new float[] {}, mBlockPaint);
+					canvas.drawLine(0, 0, BLOCKSIZE[0], 0, mBlockPaint);
+					canvas.drawLine(0, 0, 0, BLOCKSIZE[1], mBlockPaint);
+					canvas.drawLine(0, BLOCKSIZE[1], BLOCKSIZE[0], BLOCKSIZE[1], mBlockPaint);
+					canvas.drawLine(BLOCKSIZE[0], 0, BLOCKSIZE[0], BLOCKSIZE[1], mBlockPaint);
+				}
+				canvas.translate(BLOCKSIZE[0], 0);
+			}
+			canvas.restore();
+			canvas.translate(0, BLOCKSIZE[1]);
 		}
 		canvas.restore();
 		
@@ -168,23 +204,18 @@ class Game {
 		mBall.draw(canvas);
 		
 		canvas.save();
-		canvas.translate(IDEAL_SIZE[0]-12, BOTTOM);
-		for(int i = 0; i < mLives; i++) {
+		canvas.translate(SCREENSIZE[0]-12, SCREENSIZE[1]-12);
+		for(int i = 0; i < mBalls; i++) {
 			canvas.drawPicture(mBallIcon);
 			canvas.translate(-12,0);
 		}
 		canvas.restore();
 		
-		if(mPaused) {
-			mBlockPaint.setColor(0x80000000);
-			canvas.drawRect(0, 0, IDEAL_SIZE[0], IDEAL_SIZE[1], mBlockPaint);
-		}
-		
 		canvas.restore();
 	}
 
 	private void ballSound(int id) {
-		mSoundManager.play(id, mBall.rect.centerX()/IDEAL_SIZE[0]);
+		mSoundManager.play(id, mBall.rect.centerX()/SCREENSIZE[0]);
 	}
 	
 	private void rebound(boolean x, boolean y) {
@@ -204,32 +235,29 @@ class Game {
 		if(mPaused) return;
 		mFreeTime += dt;
 		
-		
-		
-		
 		dt = SECOND/120;
 		while(mFreeTime > dt) {
 			mFreeTime -= dt;
 
-			double deltaX = IDEAL_SIZE[0]/2 + mTilt.getX()*IDEAL_SIZE[0]/-10 - mPaddle.rect.centerX();
+			double deltaX = SCREENSIZE[0]/2 + mTilt.getX()*SCREENSIZE[0]/-10 - mPaddle.rect.centerX();
 			
 			mPaddle.rect.x += deltaX*10*dt/SECOND;
-			mPaddle.rect.bottom(BOTTOM);
+			mPaddle.rect.bottom(PADDLE_Y);
 			
 			if(mPaddle.rect.left() < 0) {
 				mPaddle.rect.x -= mPaddle.rect.left();
 			}
-			if(mPaddle.rect.right() > IDEAL_SIZE[0]) {
-				mPaddle.rect.x -= mPaddle.rect.right() - IDEAL_SIZE[0];
+			if(mPaddle.rect.right() > SCREENSIZE[0]) {
+				mPaddle.rect.x -= mPaddle.rect.right() - SCREENSIZE[0];
 			}			
 			
 			if(!mBallInPlay) {
 				mBall.rect.centerX(mPaddle.rect.centerX());
 				mBall.rect.bottom(mPaddle.rect.top());
 			} else {
-				if(mBall.rect.right() > IDEAL_SIZE[0]-1) {
+				if(mBall.rect.right() > SCREENSIZE[0]-1) {
 					rebound(true, false);
-					mBall.rect.right(IDEAL_SIZE[0]-1);
+					mBall.rect.right(SCREENSIZE[0]-1);
 					ballSound(R.raw.bounce1);
 				}
 				if(mBall.rect.left() < 0) {
@@ -250,10 +278,10 @@ class Game {
 					mBall.rect.top(0);
 					ballSound(R.raw.bounce1);
 				}
-				if(mBall.rect.bottom() > BOTTOM) {
+				if(mBall.rect.bottom() > SCREENSIZE[1]) {
 					mBallInPlay = false;
-					mLives--;
-					if(mLives < 0) {
+					mBalls--;
+					if(mBalls < 0) {
 						newGame();
 						return;
 					}
@@ -264,22 +292,22 @@ class Game {
 						if(Math.abs(dx) == Math.abs(dy)) continue;
 						int bx = (int) Math.floor((mBall.rect.hSide(dx))/32);
 						int by = (int) Math.floor((mBall.rect.vSide(dy))/16);
-						if(by < 0 || by >= mBricks.length || bx < 0 || bx >= mBricks[by].length) continue;
-						if(mBricks[by][bx] != 0) {
+						if(by < 0 || by >= mBlocks.length || bx < 0 || bx >= mBlocks[by].length) continue;
+						if(mBlocks[by][bx] != 0) {
 							if(dx * mBallDx >= 0 && dy * mBallDy >= 0) {
-								if(mBricks[by][bx] < UNBREAKABLE_BLOCK || mBricks[by][bx] == HARD_BLOCK+4) {
-									mBricks[by][bx] = 0;
+								if(mBlocks[by][bx] < UNBREAKABLE_BLOCK || mBlocks[by][bx] == HARD_BLOCK+3) {
+									mBlocks[by][bx] = 0;
 									ballSound(R.raw.destroy);
-									if(--mBricksLeft == 0) {
+									if(--mBlocksLeft == 0) {
 										if(mPatterns.get(mStage).awardsExtraBall()) {
-											mLives++;
+											mBalls++;
 										}
 										nextStage();
 									}
-								} else if (mBricks[by][bx] == UNBREAKABLE_BLOCK) {
+								} else if (mBlocks[by][bx] == UNBREAKABLE_BLOCK) {
 									ballSound(R.raw.bounce1);
 								} else {
-									mBricks[by][bx]++;
+									mBlocks[by][bx]++;
 									ballSound(R.raw.destroy);
 								}
 							}
@@ -331,15 +359,15 @@ class Game {
 	
 	private void newStage() {
 		assert mPatterns.size() > 0;
-		mBricksLeft = 0;
-		for(int r = 0; r < mBricks.length; r++) {
-        	for(int c = 0; c <  mBricks[r].length; c++) {
+		mBlocksLeft = 0;
+		for(int r = 0; r < mBlocks.length; r++) {
+        	for(int c = 0; c <  mBlocks[r].length; c++) {
         		if(r >= mPatterns.get(mStage).height() || c >= mPatterns.get(mStage).width()) {
-        			mBricks[r][c] = 0;
+        			mBlocks[r][c] = 0;
         		} else {
-	        		mBricks[r][c] = mPatterns.get(mStage).get(c, r);
-	        		if(mBricks[r][c] != 0 && mBricks[r][c] != UNBREAKABLE_BLOCK) {
-	        			mBricksLeft++;
+	        		mBlocks[r][c] = mPatterns.get(mStage).get(c, r);
+	        		if(mBlocks[r][c] != 0 && mBlocks[r][c] != UNBREAKABLE_BLOCK) {
+	        			mBlocksLeft++;
 	        		}
         		}
         	}
@@ -349,7 +377,7 @@ class Game {
 	
 	public void newGame() {
 		newStage();
-		mLives = 3;
+		mBalls = 3;
 	}
 	
 	public void restoreState(Bundle savedInstanceState) {
@@ -361,7 +389,7 @@ class Game {
 		int x = 0;
 		int y = 0;
 		for(int i:bricks) {
-			mBricks[y][x++] = i;
+			mBlocks[y][x++] = i;
 			if(x >= 15) {
 				x = 0;
 				y++;
@@ -374,13 +402,13 @@ class Game {
 		mBall.rect.y = savedInstanceState.getFloat("ball_y");
 		mBallInPlay = savedInstanceState.getBoolean("ball_in_play", false);
 		mStage = savedInstanceState.getInt("stage");
-		mLives = savedInstanceState.getInt("lives");
+		mBalls = savedInstanceState.getInt("lives");
 	}
 
 	public void saveState(Bundle outState) {
-		int[] bricks = new int[mBricks.length*mBricks[0].length];
+		int[] bricks = new int[mBlocks.length*mBlocks[0].length];
 		int c = 0;
-		for(int[] row: mBricks) {
+		for(int[] row: mBlocks) {
 			for(int i: row) {
 				bricks[c++] = i;
 			}
@@ -393,7 +421,7 @@ class Game {
 		outState.putBoolean("ball_in_play", mBallInPlay);
 		
 		outState.putInt("stage", mStage);
-		outState.putInt("lives", mLives);
+		outState.putInt("lives", mBalls);
 		
 	}
 }
