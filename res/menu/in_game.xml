@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+    <item android:id="@+id/prev" android:title="Previous Stage"></item><item android:id="@+id/restart" android:title="Restart"></item><item android:id="@+id/next" android:title="Next Stage"></item>
+    
+    
+    
+
+</menu>
