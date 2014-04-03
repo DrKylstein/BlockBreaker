@@ -28,7 +28,7 @@ public class SoundManager {
 		mSoundPool.play(mSounds.get(id), 1F, 1F, 1, 0, 1F);
 	}
 	
-	public void play(int id, float pos) {
-		mSoundPool.play(mSounds.get(id), 1-pos, pos, 1, 0, 1F);
+	public void play(int id, float d) {
+		mSoundPool.play(mSounds.get(id), 1-d, d, 1, 0, 1F);
 	}
 }
