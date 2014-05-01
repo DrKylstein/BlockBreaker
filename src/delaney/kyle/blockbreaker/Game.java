@@ -1,13 +1,18 @@
 package delaney.kyle.blockbreaker;
 
 import java.io.File;
+
+import com.larvalabs.svgandroid.SVGParser;
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.Resources.NotFoundException;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.Picture;
 import android.os.Bundle;
-import android.util.Log;
 
 class Game {
 
@@ -55,30 +60,16 @@ class Game {
 	private Paint mBgPaint;
 	private Paint mLinePaint;
 	
+	private Picture mPaddleSprite;
+	private Picture mBallSprite;
+	private Picture mBlockDecor;
+	private Picture mUnbreakableDecor;
+	
 	private static final int HARD_BLOCK = 0x0E;
 	private static final int UNBREAKABLE_BLOCK = 0x0D;
 	
 	
-	private static final int[] mBlockColors = {
-			0, 
-			0xFFFF0000,
-			0xFFc0dcc0,
-			0xFFa6caf0,
-			0xFFffff00,
-			0xFFff0088, 
-			0xFF00ffff,
-			0xFF00ff00, 
-			0xFFff8800,
-			0xFFff00ff,
-			0xFF0000ff,
-			0xFFe3a276,
-			0xFF880000,
-			0xFFCCCC00,
-			0xFFcccccc,
-			0xFFcccccc,
-			0xFFcccccc,
-			0xFFcccccc
-	};
+	private int[] mBlockColors;
 
 
 	
@@ -94,15 +85,35 @@ class Game {
 		
         Resources res = context.getResources();
 		
+		BitmapFactory.Options options = new BitmapFactory.Options();
+		options.inScaled = false;
+		Bitmap colors = BitmapFactory.decodeResource(res, R.raw.block_colors, options);
+		
+		mBlockColors = new int[colors.getWidth()];
+		
+		for(int i = 0; i < colors.getWidth(); i++) {
+			mBlockColors[i] = colors.getPixel(i, 0);
+		}
+        
         mBlockPaint = new Paint();
         mBgPaint = new Paint();
-        mBgPaint.setColor(0xFFFFFFFF);
+        mBgPaint.setColor(mBlockColors[0]);
 		mBallPaint = new Paint();
 		mBallPaint.setColor(0xFF880000);
+		mBallPaint.setAntiAlias(true);
 		mLinePaint = new Paint();
 		mLinePaint.setColor(0xFF000000);
 		mLinePaint.setStyle(Paint.Style.STROKE);
+		mLinePaint.setAntiAlias(true);
 
+
+		mPaddleSprite = SVGParser.getSVGFromResource(res, R.raw.paddle).getPicture();
+		mBallSprite = SVGParser.getSVGFromResource(res, R.raw.ball).getPicture();
+		mBlockDecor = SVGParser.getSVGFromResource(res, R.raw.blockdecor).getPicture();
+		mUnbreakableDecor = SVGParser.getSVGFromResource(res, R.raw.unbreakabledecor).getPicture();
+
+		
+		
 		mPatterns = new PatternFile(res.openRawResource(R.raw.system));
 
 		mTilt = new TiltInput(context);
@@ -143,24 +154,17 @@ class Game {
 		canvas.drawRect(0, 0, SCREENSIZE[0], SCREENSIZE[1], mBgPaint);
 		
 		canvas.save();
+		canvas.translate((float)mBallPos.x, (float)mBallPos.y);
+		mBallSprite.draw(canvas);
+		canvas.restore();
+		
+		canvas.save();
 		for(int y = 0; y < mBlocks.length; y++) {
 			canvas.save();
 			for(int x = 0; x < mBlocks[0].length; x++) {
 				if(mBlocks[y][x] > 0) {
-					mBlockPaint.setColor(mBlockColors[mBlocks[y][x]]);
-					canvas.drawRect(0, 0, BLOCKSIZE[0]-1, BLOCKSIZE[1]-1, mBlockPaint);
-					int cuts = Math.max(mBlocks[y][x]-HARD_BLOCK, 0);
-					switch(cuts) {
-						case 3:
-							canvas.drawLine(BLOCKSIZE[0]/4, 0, BLOCKSIZE[0]/4, BLOCKSIZE[1], mLinePaint);
-							canvas.drawLine(BLOCKSIZE[0]*3/4, 0, BLOCKSIZE[0]*3/4, BLOCKSIZE[1], mLinePaint);
-						case 2:
-							canvas.drawLine(0, BLOCKSIZE[1]/2, BLOCKSIZE[0], BLOCKSIZE[1]/2, mLinePaint);
-						case 1:
-							canvas.drawLine(BLOCKSIZE[0]/2, 0, BLOCKSIZE[0]/2, BLOCKSIZE[1], mLinePaint);
-						default:
-							break;
-					} 
+					mBlockPaint.setColor(mBlockColors[18]&0x7FFFFFFF);
+					canvas.drawRect(2, 2, BLOCKSIZE[0]+2, BLOCKSIZE[1]+2, mBlockPaint);
 				}
 				canvas.translate(BLOCKSIZE[0], 0);
 			}
@@ -169,15 +173,48 @@ class Game {
 		}
 		canvas.restore();
 		
-		canvas.drawRect((float)(mPaddlePos.x-PADDLE_RADIUS), (float)mPaddlePos.y, 
-				(float)(mPaddlePos.x+PADDLE_RADIUS), (float)(mPaddlePos.y+PADDLE_HEIGHT), mBallPaint);
+		canvas.save();
+		for(int y = 0; y < mBlocks.length; y++) {
+			canvas.save();
+			for(int x = 0; x < mBlocks[0].length; x++) {
+				if(mBlocks[y][x] > 0) {
+					mBlockPaint.setColor(mBlockColors[mBlocks[y][x]]);
+					canvas.drawRect(0, 0, BLOCKSIZE[0], BLOCKSIZE[1], mBlockPaint);
+					int cuts = Math.max(mBlocks[y][x]-HARD_BLOCK, 0);
+					switch(cuts) {
+						case 3:
+							canvas.drawLine(BLOCKSIZE[0]/4, 0, BLOCKSIZE[0]/4, BLOCKSIZE[1], mBgPaint);
+							canvas.drawLine(BLOCKSIZE[0]*3/4, 0, BLOCKSIZE[0]*3/4, BLOCKSIZE[1], mBgPaint);
+						case 2:
+							canvas.drawLine(0, BLOCKSIZE[1]/2, BLOCKSIZE[0], BLOCKSIZE[1]/2, mBgPaint);
+						case 1:
+							canvas.drawLine(BLOCKSIZE[0]/2, 0, BLOCKSIZE[0]/2, BLOCKSIZE[1], mBgPaint);
+						default:
+							break;
+					} 
+					if(mBlocks[y][x] == UNBREAKABLE_BLOCK) {
+						mUnbreakableDecor.draw(canvas);
+					} else {
+						mBlockDecor.draw(canvas);
+					}
+				}
+				canvas.translate(BLOCKSIZE[0], 0);
+			}
+			canvas.restore();
+			canvas.translate(0, BLOCKSIZE[1]);
+		}
+		canvas.restore();
 		
-		canvas.drawCircle((float)mBallPos.x, (float)mBallPos.y, (float)BALL_RADIUS, mBallPaint);
+		/*canvas.drawRect((float)(mPaddlePos.x-PADDLE_RADIUS), (float)mPaddlePos.y, 
+				(float)(mPaddlePos.x+PADDLE_RADIUS), (float)(mPaddlePos.y+PADDLE_HEIGHT), mBallPaint);*/
+		
+		//canvas.drawCircle((float)mBallPos.x, (float)mBallPos.y, (float)BALL_RADIUS, mBallPaint);
 		
 		canvas.save();
-		canvas.translate(SCREENSIZE[0]-12, SCREENSIZE[1]-12);
+		canvas.translate(SCREENSIZE[0]-12, SCREENSIZE[1]-8);
 		for(int i = 0; i < mBalls; i++) {
-			canvas.drawCircle(0, 0, (float)BALL_RADIUS, mBallPaint);
+			mBallSprite.draw(canvas);
+			//canvas.drawCircle(0, 0, (float)BALL_RADIUS, mBallPaint);
 			canvas.translate(-12,0);
 		}
 		canvas.restore();
@@ -186,6 +223,13 @@ class Game {
 			canvas.drawCircle(tiltPos, (float)PADDLE_Y-48, 8, mLinePaint);
 		}
 		canvas.drawLine(tiltPos, (float)PADDLE_Y-64, tiltPos, (float)PADDLE_Y-32, mLinePaint);
+		
+		
+		canvas.save();
+		canvas.translate((float)mPaddlePos.x, (float)mPaddlePos.y);
+		mPaddleSprite.draw(canvas);
+		canvas.restore();
+		
 		
 		canvas.restore();
 	}
@@ -379,6 +423,8 @@ class Game {
 			}
 		}
 		
+		mBlocksLeft = savedInstanceState.getInt("blocks_left");
+		
 		mBallVel.x = savedInstanceState.getDouble("ball_dx");
 		mBallVel.y = savedInstanceState.getDouble("ball_dy");
 		mBallPos.x = savedInstanceState.getDouble("ball_x");
@@ -397,6 +443,7 @@ class Game {
 			}
 		}
 		outState.putIntArray("bricks", bricks);
+		outState.putInt("blocks_left", mBlocksLeft);
 		outState.putDouble("ball_dx", mBallVel.x);
 		outState.putDouble("ball_dy", mBallVel.y);
 		outState.putDouble("ball_x", mBallPos.x);
