@@ -67,6 +67,8 @@ class Game {
 	
 	private static final int HARD_BLOCK = 0x0E;
 	private static final int UNBREAKABLE_BLOCK = 0x0D;
+
+	private static final double RANDOM_SKEW = 0.01;
 	
 	
 	private int[] mBlockColors;
@@ -243,11 +245,14 @@ class Game {
 	
 	private void rebound(boolean x, boolean y) {
 		if(y) {
-			mBallVel.y = -mBallVel.y;// + (float)(Math.random() - 0.5)*10;
+			mBallVel.y *= -1;
 		}
 		if(x) {
-			mBallVel.x = -mBallVel.x;// + (float)(Math.random() - 0.5)*10;
+			mBallVel.x *= -1;
 		}
+		mBallVel.x += (Math.random() - 0.5) * RANDOM_SKEW;
+		mBallVel.y += (Math.random() - 0.5) * RANDOM_SKEW;
+		mBallVel.normalize();
 	}
 	
 	public void updatePhysics() {
@@ -331,6 +336,7 @@ class Game {
 											mBalls++;
 										}
 										nextStage();
+										return;
 									}
 								} else if (mBlocks[by][bx] == UNBREAKABLE_BLOCK) {
 									ballSound(R.raw.bounce_hard);
