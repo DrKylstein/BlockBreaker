@@ -130,9 +130,12 @@ class Game {
         mBallInPlay = false;
         mBalls = 3;
         
-        mSoundManager = new SoundManager(context, 1, 2);
-        mSoundManager.load(R.raw.bounce1, 1);
+        mSoundManager = new SoundManager(context, 1, 5);
+        mSoundManager.load(R.raw.bounce_paddle, 1);
+        mSoundManager.load(R.raw.bounce_wall, 1);
+        mSoundManager.load(R.raw.bounce_hard, 1);
         mSoundManager.load(R.raw.destroy, 2);
+        mSoundManager.load(R.raw.crack, 2);
 	}
 
 	public void sizeChanged(int width, int height) {
@@ -183,12 +186,12 @@ class Game {
 					int cuts = Math.max(mBlocks[y][x]-HARD_BLOCK, 0);
 					switch(cuts) {
 						case 3:
-							canvas.drawLine(BLOCKSIZE[0]/4, 0, BLOCKSIZE[0]/4, BLOCKSIZE[1], mBgPaint);
-							canvas.drawLine(BLOCKSIZE[0]*3/4, 0, BLOCKSIZE[0]*3/4, BLOCKSIZE[1], mBgPaint);
+							canvas.drawLine(BLOCKSIZE[0]/4, 0, BLOCKSIZE[0]/4, BLOCKSIZE[1], mLinePaint);
+							canvas.drawLine(BLOCKSIZE[0]*3/4, 0, BLOCKSIZE[0]*3/4, BLOCKSIZE[1], mLinePaint);
 						case 2:
-							canvas.drawLine(0, BLOCKSIZE[1]/2, BLOCKSIZE[0], BLOCKSIZE[1]/2, mBgPaint);
+							canvas.drawLine(0, BLOCKSIZE[1]/2, BLOCKSIZE[0], BLOCKSIZE[1]/2, mLinePaint);
 						case 1:
-							canvas.drawLine(BLOCKSIZE[0]/2, 0, BLOCKSIZE[0]/2, BLOCKSIZE[1], mBgPaint);
+							canvas.drawLine(BLOCKSIZE[0]/2, 0, BLOCKSIZE[0]/2, BLOCKSIZE[1], mLinePaint);
 						default:
 							break;
 					} 
@@ -282,12 +285,12 @@ class Game {
 				if(mBallPos.x+BALL_RADIUS > SCREENSIZE[0]) {
 					rebound(true, false);
 					mBallPos.x = SCREENSIZE[0]-BALL_RADIUS;
-					ballSound(R.raw.bounce1);
+					ballSound(R.raw.bounce_wall);
 				}
 				if(mBallPos.x-BALL_RADIUS < 0) {
 					rebound(true, false);
 					mBallPos.x = BALL_RADIUS;
-					ballSound(R.raw.bounce1);
+					ballSound(R.raw.bounce_wall);
 				}
 				if(mBallPos.y+BALL_RADIUS > mPaddlePos.y &&
 						mBallPos.x-BALL_RADIUS < mPaddlePos.x+PADDLE_RADIUS &&
@@ -296,12 +299,12 @@ class Game {
 					mBallVel.y = 0 - Math.abs(mBallVel.y);
 					mBallVel.normalize();
 					mBallPos.y = mPaddlePos.y-BALL_RADIUS-1;
-					ballSound(R.raw.bounce1);
+					ballSound(R.raw.bounce_paddle);
 				}
 				if(mBallPos.y-BALL_RADIUS < 0) {
 					rebound(false, true);
 					mBallPos.y = BALL_RADIUS;
-					ballSound(R.raw.bounce1);
+					ballSound(R.raw.bounce_wall);
 				}
 				if(mBallPos.y+BALL_RADIUS > SCREENSIZE[1]) {
 					mBallInPlay = false;
@@ -330,10 +333,10 @@ class Game {
 										nextStage();
 									}
 								} else if (mBlocks[by][bx] == UNBREAKABLE_BLOCK) {
-									ballSound(R.raw.bounce1);
+									ballSound(R.raw.bounce_hard);
 								} else {
 									mBlocks[by][bx]++;
-									ballSound(R.raw.destroy);
+									ballSound(R.raw.crack);
 								}
 							}
 							rebound(dx * mBallVel.x > 0, dy * mBallVel.y > 0);
