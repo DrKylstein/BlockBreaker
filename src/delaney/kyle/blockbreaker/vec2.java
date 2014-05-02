@@ -22,6 +22,13 @@ public class vec2 {
 		if(i == 1) return y;
 		throw new IndexOutOfBoundsException();
 	}
+	
+	public void set(int i, double v) {
+		if(i == 0) x = v;
+		if(i == 1) y = v;
+		throw new IndexOutOfBoundsException();
+	}
+	
 	public void add(vec2 other) {
 		x += other.x;
 		y += other.y;

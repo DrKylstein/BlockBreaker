@@ -1,5 +1,7 @@
 package delaney.kyle.blockbreaker;
 
+import java.io.IOException;
+
 import android.app.Activity;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -35,7 +37,12 @@ public class MainActivity extends Activity {
 		gameView.setGame(mGame);
 		
         if (savedInstanceState != null) {
-        	mGame.restoreState(savedInstanceState);
+        	try {
+				mGame.restoreState(savedInstanceState);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
         } else {
         	mGame.newGame();
         }
@@ -86,6 +93,11 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle outState) {
         // just have the View's thread save its state into our Bundle
         super.onSaveInstanceState(outState);
-        mGame.saveState(outState);
+        try {
+			mGame.saveState(outState);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 }
