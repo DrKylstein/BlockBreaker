@@ -40,6 +40,10 @@ class Game {
 	private float mBlockScale;
 	private float[] mOffset = new float[2];
 	
+	private boolean inMenu = true;
+	
+	private Resources res;
+	
 	private void loadPatterns(Resources res, File dir) throws NotFoundException, Exception {
 		if(!dir.exists()) {
 			dir.mkdir();
@@ -69,9 +73,9 @@ class Game {
 	}
 	
 	public Game(Context context) throws NotFoundException, Exception {
-		Resources res = context.getResources();
+		res = context.getResources();
 		loadPatterns(res, context.getExternalFilesDir(null));
-		mRenderer = new InGameRenderer(res, gs);
+		mRenderer = new MenuRenderer(res, SCREENSIZE, BLOCKSIZE, mPatterns);//new InGameRenderer(res, gs);
         mSoundManager = new SoundManager(context, 1, 5);
         loadSounds(mSoundManager);
         
@@ -182,15 +186,28 @@ class Game {
 	}
 	
     public void touchedAt(float x, float y) {
-    	if(gs.paused) {
-    		gs.paused = false;
-    	} else if(!gs.served) {
-    		gs.ball.vel.y = -1;
-    		gs.ball.vel.x = 1;
-    		gs.ball.vel.normalize();
-    		gs.served = true;
+    	x /= mBlockScale;
+    	y /= mBlockScale;
+    	if(inMenu) {
+    		int i = (int)(x/(SCREENSIZE[0]/3));
+    		Log.d(TAG, i+"");
+    		if(i < mPatterns.size()) {
+    			gs.setPatternFile(mPatterns.get(i));
+    			inMenu = false;
+    			mRenderer = new InGameRenderer(res, gs);
+    			return;
+    		}
     	} else {
-    		gs.paused = true;
+	    	if(gs.paused) {
+	    		gs.paused = false;
+	    	} else if(!gs.served) {
+	    		gs.ball.vel.y = -1;
+	    		gs.ball.vel.x = 1;
+	    		gs.ball.vel.normalize();
+	    		gs.served = true;
+	    	} else {
+	    		gs.paused = true;
+	    	}
     	}
     }
 	
@@ -209,10 +226,15 @@ class Game {
 	}
 	
 	public void restoreState(Bundle bundle) throws Exception {
+		inMenu = bundle.getBoolean("in_menu");
+		if(!inMenu) {
+			mRenderer = new InGameRenderer(res, gs);
+		}
 		gs.restoreState(bundle);
 	}
 
 	public void saveState(Bundle bundle) throws IOException {
+		bundle.putBoolean("in_menu", inMenu);
 		gs.saveState(bundle);
 	}
 }

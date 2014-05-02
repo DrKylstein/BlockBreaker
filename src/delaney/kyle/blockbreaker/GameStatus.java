@@ -31,6 +31,7 @@ public class GameStatus {
 	
 	public void setPatternFile(PatternSet patternFile) {
 		mPatternFile = patternFile;
+		newGame();
 	}
 	
 	private void newStage() {
