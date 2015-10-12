@@ -53,7 +53,7 @@ public class Ball {
 			}
 			if(pos.y+Ball.RADIUS > gs.bounds[1]) {
 				drainListener.run(pos);
-				return;
+				if(!gs.served) return;
 			}
 			
 			for(int dy = -1; dy <= 1; dy++) {
@@ -65,6 +65,7 @@ public class Ball {
 					if(gs.blocks[by][bx] != 0) {
 						if(dx * vel.x >= 0 && dy * vel.y >= 0) {
 							blockListener.run(new vec2(bx,by));
+							if(!gs.served) return;
 						}
 						rebound(dx * vel.x > 0, dy * vel.y > 0);
 					}

@@ -106,7 +106,6 @@ class Game {
 							gs.balls++;
 						}
 						gs.nextStage();
-						return;
 					}
 				} else if (gs.blocks[by][bx] == BlockId.UNBREAKABLE_BLOCK) {
 					ballSound(R.raw.bounce_hard);
