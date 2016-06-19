@@ -52,14 +52,14 @@ class Game {
 		mPatterns = new ArrayList<PatternSet>();
 		mPatterns.add(new PatternSet(res.openRawResource(R.raw.system)));
 		
-		for(File f : dir.listFiles(new FilenameFilter() {
+		/*for(File f : dir.listFiles(new FilenameFilter() {
 				public boolean accept(File dir, String name) {
 					return name.toLowerCase(Locale.US).endsWith(".blc");
 				}
 			})) {
 			Log.d(TAG, f.getName());
 			mPatterns.add(new PatternSet(new FileInputStream(f)));
-		}
+		}*/
 		
 		gs.setPatternFile(mPatterns.get(mPatterns.size()-1));
 	}

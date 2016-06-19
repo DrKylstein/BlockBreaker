@@ -7,17 +7,12 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Picture;
 
-import com.larvalabs.svgandroid.SVGParser;
-
 public class InGameRenderer implements Renderer {
 	
 	private final Paint mBgPaint;
 	private final Paint mLinePaint;
-	
-	private final Picture mPaddleSprite;
-	private final Picture mBallSprite;
-	private final Picture mBlockDecor;
-	private final Picture mUnbreakableDecor;
+	private final Paint mBallPaint;
+	private final Paint mShadowPaint;
 	
 	private final int[] mBlockColors;
 	
@@ -46,11 +41,11 @@ public class InGameRenderer implements Renderer {
 		mLinePaint.setColor(0xFF000000);
 		mLinePaint.setStyle(Paint.Style.STROKE);
 		mLinePaint.setAntiAlias(true);
-		
-		mPaddleSprite = SVGParser.getSVGFromResource(res, R.raw.paddle).getPicture();
-		mBallSprite = SVGParser.getSVGFromResource(res, R.raw.ball).getPicture();
-		mBlockDecor = SVGParser.getSVGFromResource(res, R.raw.blockdecor).getPicture();
-		mUnbreakableDecor = SVGParser.getSVGFromResource(res, R.raw.unbreakabledecor).getPicture();
+
+		mBallPaint = new Paint();
+		mBallPaint.setColor(0xFF825147);
+		mShadowPaint = new Paint();
+		mShadowPaint.setColor(mBlockColors[18] & 0x7FFFFFFF);
 	}
 	
 	@Override
@@ -58,8 +53,9 @@ public class InGameRenderer implements Renderer {
 		canvas.drawRect(0, 0, gs.bounds[0], gs.bounds[1], mBgPaint);
 		
 		canvas.save();
-		canvas.translate((float)gs.ball.pos.x, (float)gs.ball.pos.y);
-		mBallSprite.draw(canvas);
+		canvas.translate((float) gs.ball.pos.x, (float) gs.ball.pos.y);
+		canvas.drawCircle(1, 1, 5, mShadowPaint);
+		canvas.drawCircle(0, 0, 5, mBallPaint);
 		canvas.restore();
 		
 		canvas.save();
@@ -67,8 +63,7 @@ public class InGameRenderer implements Renderer {
 			canvas.save();
 			for(int x = 0; x < gs.blocks[0].length; x++) {
 				if(gs.blocks[y][x] > 0) {
-					mBlockPaint.setColor(mBlockColors[18]&0x7FFFFFFF);
-					canvas.drawRect(2, 2, gs.blockSize[0]+2, gs.blockSize[1]+2, mBlockPaint);
+					canvas.drawRect(2, 2, gs.blockSize[0], gs.blockSize[1], mShadowPaint);
 				}
 				canvas.translate(gs.blockSize[0], 0);
 			}
@@ -83,7 +78,7 @@ public class InGameRenderer implements Renderer {
 			for(int x = 0; x < gs.blocks[0].length; x++) {
 				if(gs.blocks[y][x] > 0) {
 					mBlockPaint.setColor(mBlockColors[gs.blocks[y][x]]);
-					canvas.drawRect(0, 0, gs.blockSize[0], gs.blockSize[1], mBlockPaint);
+					canvas.drawRect(1, 1, gs.blockSize[0]-1, gs.blockSize[1]-1, mBlockPaint);
 					int cuts = Math.max(gs.blocks[y][x]-BlockId.HARD_BLOCK, 0);
 					switch(cuts) {
 						case 3:
@@ -96,11 +91,11 @@ public class InGameRenderer implements Renderer {
 						default:
 							break;
 					} 
-					if(gs.blocks[y][x] == BlockId.UNBREAKABLE_BLOCK) {
+					/*if(gs.blocks[y][x] == BlockId.UNBREAKABLE_BLOCK) {
 						mUnbreakableDecor.draw(canvas);
 					} else {
 						mBlockDecor.draw(canvas);
-					}
+					}*/
 				}
 				canvas.translate(gs.blockSize[0], 0);
 			}
@@ -112,7 +107,7 @@ public class InGameRenderer implements Renderer {
 		canvas.save();
 		canvas.translate(gs.bounds[0]-12, gs.bounds[1]-8);
 		for(int i = 0; i < gs.balls; i++) {
-			mBallSprite.draw(canvas);
+			canvas.drawCircle(0, 0, 5, mBallPaint);
 			canvas.translate(-12,0);
 		}
 		canvas.restore();
@@ -120,11 +115,12 @@ public class InGameRenderer implements Renderer {
 		if(gs.paused) {
 			canvas.drawCircle(gs.tiltPos, (float)gs.paddle.pos.y-48, 8, mLinePaint);
 		}
-		canvas.drawLine(gs.tiltPos, (float)gs.paddle.pos.y-64, gs.tiltPos, (float)gs.paddle.pos.y-32, mLinePaint);
+		canvas.drawLine(gs.tiltPos, (float) gs.paddle.pos.y - 64, gs.tiltPos, (float) gs.paddle.pos.y - 32, mLinePaint);
 		
 		canvas.save();
-		canvas.translate((float)gs.paddle.pos.x, (float)gs.paddle.pos.y);
-		mPaddleSprite.draw(canvas);
+		canvas.translate((float) gs.paddle.pos.x, (float) gs.paddle.pos.y);
+		canvas.drawRect(-22, 1, 24, 6, mShadowPaint);
+		canvas.drawRect(-23, 0, 23, 5, mBallPaint);
 		canvas.restore();
 	}
 }
