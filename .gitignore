@@ -1,5 +1,4 @@
 .gradle
-.idea
-*.iml
 build
-blockBreaker/build
+app/build
+local.properties
